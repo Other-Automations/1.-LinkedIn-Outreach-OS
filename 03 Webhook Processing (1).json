@@ -1,0 +1,2626 @@
+{
+  "name": "03 Webhook Processing",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "unipile/events",
+        "options": {}
+      },
+      "id": "wf03-n001",
+      "name": "UniPile Webhook Receiver",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        336
+      ],
+      "webhookId": "7cd120d7-35a3-4a7a-8d2a-6637f4e0ee54"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate the Unipile-Auth header matches our secret\n// Also log the raw payload immediately (Patch 6, Section 9.3)\nconst headers = $input.first().json.headers || {};\nconst body = $input.first().json.body || {};\n\nconst expectedSecret = $vars.WEBHOOK_AUTH_SECRET;\nconst receivedAuth = headers['unipile-auth'] || headers['Unipile-Auth'] || '';\n\nconst authValid = !expectedSecret || receivedAuth === expectedSecret;\n\nif (!authValid) {\n  return [{ json: { valid: false, reason: 'invalid_auth', body, headers } }];\n}\n\n// PRIMARY classifier: use webhook_name — set by us in UniPile config, always reliable.\n// UniPile sends event:'message_received' for EVERYTHING including acceptances.\n// webhook_name is the only reliable differentiator.\nconst webhookName = body.webhook_name || '';\n\nconst ACCOUNT_DISCONNECT = ['DISCONNECTED', 'CREDENTIALS', 'account_disconnected', 'disconnected'];\nconst ACCOUNT_STATUS = ['RECONNECTED', 'STOPPED', 'ERROR', 'account_status', 'account_issue', 'account_reconnected'];\n\nlet eventType = 'unknown';\nif (webhookName === 'n8n-relation-events') {\n  // Fires when someone accepts our connection request\n  eventType = 'new_relation';\n} else if (webhookName === 'n8n-account-status') {\n  // Fires for account health events (DISCONNECTED, CREDENTIALS, RECONNECTED, etc.)\n  const raw = body.event || '';\n  eventType = ACCOUNT_DISCONNECT.includes(raw) ? 'account_disconnected' : 'account_status';\n} else if (webhookName === 'n8n-messages') {\n  // Fires for all messages: outbound notes (is_sender=true) AND inbound replies (is_sender=false)\n  // Differentiated downstream by Process Message Received → Skip Outbound Message\n  eventType = 'message_received';\n} else {\n  // FALLBACK: check body.object FIRST — more reliable than body.event.\n  // UniPile sends body.event='message_received' even for Relation events,\n  // so body.object is the only safe signal in fallback path.\n  if (body.object === 'Relation') {\n    eventType = 'new_relation';\n  } else if (body.object === 'Account') {\n    const raw = body.event || '';\n    eventType = ACCOUNT_DISCONNECT.includes(raw) ? 'account_disconnected' : 'account_status';\n  } else if (body.object === 'Message') {\n    eventType = 'message_received';\n  } else {\n    // Last resort: try raw event string\n    const raw = body.event || body.type || '';\n    if (ACCOUNT_DISCONNECT.includes(raw)) eventType = 'account_disconnected';\n    else if (ACCOUNT_STATUS.includes(raw)) eventType = 'account_status';\n    else if (raw) eventType = raw;\n  }\n}\n\n// Extract event ID for deduplication\nconst eventId = body.id || body.event_id || body.message_id || '';\n\nreturn [{ json: { valid: true, eventType, eventId, body, headers } }];"
+      },
+      "id": "wf03-n002",
+      "name": "Validate Auth Header",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        336
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "wf03-n003",
+      "name": "Reject Invalid Auth",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        464,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-auth",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf03-n004",
+      "name": "Is Auth Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        688,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1864843744,
+          "mode": "list",
+          "cachedResultName": "Webhook Logs Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1864843744"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ new Date().toISOString() }}",
+            "webhook_event_id": "={{ $json.eventId }}",
+            "event_type": "={{ $json.eventType }}",
+            "raw_payload": "={{ JSON.stringify($json.body) }}",
+            "processing_status": "processing"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "webhook_event_id",
+              "displayName": "webhook_event_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "event_type",
+              "displayName": "event_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "raw_payload",
+              "displayName": "raw_payload",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "processing_status",
+              "displayName": "processing_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "matched_row_id",
+              "displayName": "matched_row_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "wf03-n005",
+      "name": "Log Raw Webhook Payload",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        912,
+        320
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1864843744,
+          "mode": "list",
+          "cachedResultName": "Webhook Logs Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1864843744"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "webhook_event_id",
+              "lookupValue": "={{ $('Validate Auth Header').first().json.eventId }}"
+            }
+          ]
+        },
+        "options": {
+          "returnAllMatches": "returnAllMatches"
+        }
+      },
+      "id": "wf03-n006",
+      "name": "Check Event Deduplication",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1120,
+        320
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check if this event was already processed (Patch 7 webhook deduplication)\nconst logRows = $input.all();\nconst eventData = $('Validate Auth Header').first().json;\n\n// If no eventId, cannot deduplicate — always process\nif (!eventData.eventId) {\n  return [{ json: { ...eventData, isDuplicate: false } }];\n}\n\n// Count rows with same event_id that are already 'processed'\nconst processedCount = logRows.filter(r =>\n  r.json.webhook_event_id === eventData.eventId &&\n  r.json.processing_status === 'processed'\n).length;\n\nreturn [{ json: { ...eventData, isDuplicate: processedCount > 0 } }];"
+      },
+      "id": "wf03-n007",
+      "name": "Check If Duplicate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-dup",
+              "leftValue": "={{ $json.isDuplicate }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf03-n008",
+      "name": "Is Duplicate Event",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        320
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "wf03-n009",
+      "name": "Skip Duplicate",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1584,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "output": "={{ $json.eventType === 'new_relation' ? 0 : $json.eventType === 'message_received' ? 1 : $json.eventType === 'account_status' ? 2 : $json.eventType === 'account_disconnected' ? 3 : 4 }}"
+      },
+      "id": "wf03-n010",
+      "name": "Route By Event Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        1792,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process new_relation event — invitation was accepted\n// Find the matching Database row and update lifecycle state\nconst eventBody = $input.first().json.body;\n\n// account_id = OUR sender account (not the prospect)\nconst ourAccountId = eventBody.account_id || '';\n\n// Extract prospect's provider_id from attendees array, excluding our own account\nlet attendeeId = '';\nif (eventBody.attendees && Array.isArray(eventBody.attendees)) {\n  // Find the attendee that is NOT our account\n  const prospectAttendee = eventBody.attendees.find(a =>\n    a.provider_id && a.account_id !== ourAccountId\n  ) || eventBody.attendees.find(a => a.provider_id);\n  if (prospectAttendee) attendeeId = prospectAttendee.provider_id;\n}\n\n// Fallbacks for different payload shapes\nif (!attendeeId) {\n  attendeeId = eventBody.attendee_id ||\n    eventBody.requester_provider_id ||\n    eventBody.provider_id ||\n    '';\n}\n\nreturn [{\n  json: {\n    _eventType: 'new_relation',\n    _attendeeId: attendeeId,\n    _accountId: ourAccountId,\n    _rawBody: eventBody\n  }\n}];"
+      },
+      "id": "wf03-n011",
+      "name": "Process Invitation Accepted",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1412862851,
+          "mode": "list",
+          "cachedResultName": "Database Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1412862851"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "provider_id",
+              "lookupValue": "={{ $json._attendeeId }}"
+            }
+          ]
+        },
+        "options": {
+          "returnAllMatches": "returnFirstMatch"
+        }
+      },
+      "id": "wf03-n012",
+      "name": "Find Row by Provider ID",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2224,
+        -16
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Match the row and build the update payload for invitation accepted\nconst matchedRows = $input.all();\nconst eventData = $('Process Message Received').first().json;\n\nif (matchedRows.length === 0) {\n  // No match by provider_id — log as unmatched\n  return [{ json: { _matched: false, _attendeeId: eventData._attendeeId, _eventType: 'new_relation' } }];\n}\n\nconst dbRow = matchedRows[0].json;\n\n// Guard: if already accepted or beyond, do not process again (idempotency)\nif (['invite_accepted', 'waiting_for_followup', 'followup_1_sent', 'followup_2_sent', 'replied', 'completed'].includes(dbRow.lifecycle_state)) {\n  return [{ json: { _matched: true, _alreadyProcessed: true, row_id: dbRow.row_id } }];\n}\n\nconst now = new Date().toISOString();\n\nreturn [{\n  json: {\n    _matched: true,\n    _alreadyProcessed: false,\n    row_id: dbRow.row_id,\n    campaign_id: dbRow.campaign_id,\n    campaign_name: dbRow.campaign_name,\n    sending_account: dbRow.sending_account,\n    prospect_first_name: dbRow.first_name,\n    linkedin_url: dbRow.linkedin_url,\n    // DB update fields\n    connection_accepted: 'true',\n    connection_accepted_time: now,\n    message_1_eligible: 'true',\n    chat_id: eventData._chatId || '',\n    last_updated: now,\n    lifecycle_state: 'invite_accepted'  // LAST — Patch 11\n  }\n}];"
+      },
+      "id": "wf03-n013",
+      "name": "Update Accepted Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2448,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-matched",
+              "leftValue": "={{ $json._matched }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf03-n014",
+      "name": "Row Matched for Accept",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2672,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1412862851,
+          "mode": "list",
+          "cachedResultName": "Database Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1412862851"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "connection_accepted": "={{ $json.connection_accepted }}",
+            "connection_accepted_time": "={{ $json.connection_accepted_time }}",
+            "message_1_eligible": "={{ $json.message_1_eligible }}",
+            "last_updated": "={{ $json.last_updated }}",
+            "lifecycle_state": "={{ $json.lifecycle_state }}",
+            "row_number": 0,
+            "row_id": "={{ $json.row_id }}"
+          },
+          "matchingColumns": [
+            "row_id"
+          ],
+          "schema": [
+            {
+              "id": "row_id",
+              "displayName": "row_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "prospect_id",
+              "displayName": "prospect_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "campaign_name",
+              "displayName": "campaign_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "linkedin_url",
+              "displayName": "linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "first_name",
+              "displayName": "first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "last_name",
+              "displayName": "last_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "company_name",
+              "displayName": "company_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "city",
+              "displayName": "city",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "country",
+              "displayName": "country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "company_website",
+              "displayName": "company_website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "sending_account",
+              "displayName": "sending_account",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "provider_id",
+              "displayName": "provider_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "lifecycle_state",
+              "displayName": "lifecycle_state",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "connection_request_status",
+              "displayName": "connection_request_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "connection_request_time",
+              "displayName": "connection_request_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "connection_accepted",
+              "displayName": "connection_accepted",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "connection_accepted_time",
+              "displayName": "connection_accepted_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message_1_eligible",
+              "displayName": "message_1_eligible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message_1_sent",
+              "displayName": "message_1_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_1_time",
+              "displayName": "message_1_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_2_sent",
+              "displayName": "message_2_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_2_time",
+              "displayName": "message_2_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_3_sent",
+              "displayName": "message_3_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_3_time",
+              "displayName": "message_3_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "reply_received",
+              "displayName": "reply_received",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "reply_text",
+              "displayName": "reply_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "reply_time",
+              "displayName": "reply_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "withdrawal_eligible_at",
+              "displayName": "withdrawal_eligible_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "retry_count",
+              "displayName": "retry_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "failure_reason",
+              "displayName": "failure_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "last_updated",
+              "displayName": "last_updated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "wf03-n015",
+      "name": "Write Accepted to DB",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2928,
+        -32
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 387593053,
+          "mode": "list",
+          "cachedResultName": "Activity Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=387593053"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $json.last_updated }}",
+            "event_type": "invitation_accepted",
+            "campaign_id": "={{ $json.campaign_id }}",
+            "campaign_name": "={{ $json.campaign_name }}",
+            "prospect_linkedin_url": "={{ $json.linkedin_url }}",
+            "sending_account": "={{ $json.sending_account }}",
+            "\tprospect_first_name": "={{ $json.prospect_first_name }}",
+            "\tdescription": "={{ 'Invitation accepted by ' + $json.prospect_first_name + '. Message 1 eligible.' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "event_type",
+              "displayName": "event_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_name",
+              "displayName": "campaign_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "prospect_linkedin_url",
+              "displayName": "prospect_linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "\tprospect_first_name",
+              "displayName": "\tprospect_first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sending_account",
+              "displayName": "sending_account",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "\tdescription",
+              "displayName": "\tdescription",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "wf03-n016",
+      "name": "Log Accepted Activity",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        3184,
+        -32
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1864843744,
+          "mode": "list",
+          "cachedResultName": "Webhook Logs Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1864843744"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "processing_status": "unmatched",
+            "notes": "={{ 'No DB row matched attendee_id: ' + $json._attendeeId }}",
+            "row_number": 0,
+            "webhook_event_id": "={{ $('Validate Auth Header').first().json.eventId }}"
+          },
+          "matchingColumns": [
+            "webhook_event_id"
+          ],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "webhook_event_id",
+              "displayName": "webhook_event_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "event_type",
+              "displayName": "event_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "raw_payload",
+              "displayName": "raw_payload",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "processing_status",
+              "displayName": "processing_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "matched_row_id",
+              "displayName": "matched_row_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "wf03-n017",
+      "name": "Log Unmatched Accept",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2928,
+        160
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const eventBody = $input.first().json.body;\n\nconst isOutbound = eventBody.is_sender === true || eventBody.from_me === true;\n\nconst ourProvId = (eventBody.account_info && eventBody.account_info.user_id) || '';\nconst prospect = (eventBody.attendees || []).find(a =>\n  a.attendee_provider_id && a.attendee_provider_id !== ourProvId\n);\nconst prospectProviderId = (prospect && prospect.attendee_provider_id) || '';\n\nconst chatId = eventBody.chat_id || '';\nconst replyText = eventBody.message || eventBody.text || '';\n\nif (isOutbound) {\n  return [{ json: {\n    _isOutbound: true,\n    _attendeeId: prospectProviderId,\n    _chatId: chatId,\n    _rawBody: eventBody\n  }}];\n}\n\nreturn [{ json: {\n  _isOutbound: false,\n  _chatId: chatId,\n  _senderId: prospectProviderId,\n  _replyText: replyText,\n  _rawBody: eventBody\n}}];"
+      },
+      "id": "wf03-n018",
+      "name": "Process Message Received",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2016,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-outbound",
+              "leftValue": "={{ $json._isOutbound }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf03-n019",
+      "name": "Skip Outbound Message",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2224,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1412862851,
+          "mode": "list",
+          "cachedResultName": "Database Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1412862851"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "chat_id",
+              "lookupValue": "={{ $json._chatId }}"
+            }
+          ]
+        },
+        "options": {
+          "returnAllMatches": "returnFirstMatch"
+        }
+      },
+      "id": "wf03-n020",
+      "name": "Find Row by Chat ID",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2464,
+        352
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process reply — set lifecycle_state = replied, store reply content\nconst matchedRows = $input.all();\nconst msgData = $('Process Message Received').first().json;\n\nif (matchedRows.length === 0) {\n  return [{ json: { _matched: false, _chatId: msgData._chatId } }];\n}\n\nconst dbRow = matchedRows[0].json;\n\n// Already replied — idempotent check\nif (dbRow.lifecycle_state === 'replied') {\n  return [{ json: { _matched: true, _alreadyReplied: true, row_id: dbRow.row_id } }];\n}\n\n// Do not process if row is in a terminal non-replied state\nif (['completed', 'withdrawn', 'failed'].includes(dbRow.lifecycle_state)) {\n  return [{ json: { _matched: true, _terminalState: true, row_id: dbRow.row_id, lifecycle_state: dbRow.lifecycle_state } }];\n}\n\nconst now = new Date().toISOString();\n\nreturn [{\n  json: {\n    _matched: true,\n    _alreadyReplied: false,\n    _terminalState: false,\n    row_id: dbRow.row_id,\n    campaign_id: dbRow.campaign_id,\n    campaign_name: dbRow.campaign_name,\n    sending_account: dbRow.sending_account,\n    prospect_first_name: dbRow.first_name,\n    linkedin_url: dbRow.linkedin_url,\n    // DB update fields\n    reply_received: 'true',\n    reply_text: msgData._replyText,\n    reply_time: now,\n    last_updated: now,\n    lifecycle_state: 'replied'  // LAST — Patch 11\n  }\n}];"
+      },
+      "id": "wf03-n021",
+      "name": "Update Reply Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2672,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-reply-matched",
+              "leftValue": "={{ $json._matched && !$json._alreadyReplied && !$json._terminalState }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf03-n022",
+      "name": "Row Matched for Reply",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1412862851,
+          "mode": "list",
+          "cachedResultName": "Database Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1412862851"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "reply_received": "={{ $json.reply_received }}",
+            "reply_text": "={{ $json.reply_text }}",
+            "reply_time": "={{ $json.reply_time }}",
+            "last_updated": "={{ $json.last_updated }}",
+            "lifecycle_state": "={{ $json.lifecycle_state }}",
+            "row_number": 0,
+            "row_id": "={{ $json.row_id }}"
+          },
+          "matchingColumns": [
+            "row_id"
+          ],
+          "schema": [
+            {
+              "id": "row_id",
+              "displayName": "row_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "prospect_id",
+              "displayName": "prospect_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "campaign_name",
+              "displayName": "campaign_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "linkedin_url",
+              "displayName": "linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "first_name",
+              "displayName": "first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "last_name",
+              "displayName": "last_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "company_name",
+              "displayName": "company_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "city",
+              "displayName": "city",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "country",
+              "displayName": "country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "company_website",
+              "displayName": "company_website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "sending_account",
+              "displayName": "sending_account",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "provider_id",
+              "displayName": "provider_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "lifecycle_state",
+              "displayName": "lifecycle_state",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "connection_request_status",
+              "displayName": "connection_request_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "connection_request_time",
+              "displayName": "connection_request_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "connection_accepted",
+              "displayName": "connection_accepted",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "connection_accepted_time",
+              "displayName": "connection_accepted_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_1_eligible",
+              "displayName": "message_1_eligible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_1_sent",
+              "displayName": "message_1_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_1_time",
+              "displayName": "message_1_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_2_sent",
+              "displayName": "message_2_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_2_time",
+              "displayName": "message_2_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_3_sent",
+              "displayName": "message_3_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_3_time",
+              "displayName": "message_3_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "reply_received",
+              "displayName": "reply_received",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reply_text",
+              "displayName": "reply_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reply_time",
+              "displayName": "reply_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "withdrawal_eligible_at",
+              "displayName": "withdrawal_eligible_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "retry_count",
+              "displayName": "retry_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "failure_reason",
+              "displayName": "failure_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "last_updated",
+              "displayName": "last_updated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "wf03-n023",
+      "name": "Write Reply to DB",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        3136,
+        336
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 387593053,
+          "mode": "list",
+          "cachedResultName": "Activity Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=387593053"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $json.reply_time }}",
+            "event_type": "reply_received",
+            "campaign_id": "={{ $json.campaign_id }}",
+            "campaign_name": "={{ $json.campaign_name }}",
+            "prospect_linkedin_url": "={{ $json.linkedin_url }}",
+            "sending_account": "={{ $json.sending_account }}",
+            "\tprospect_first_name": "={{ $json.prospect_first_name }}",
+            "\tdescription": "={{ 'Reply received from ' + $json.prospect_first_name + '. Outreach sequence halted.' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "event_type",
+              "displayName": "event_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_name",
+              "displayName": "campaign_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "prospect_linkedin_url",
+              "displayName": "prospect_linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "\tprospect_first_name",
+              "displayName": "\tprospect_first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sending_account",
+              "displayName": "sending_account",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "\tdescription",
+              "displayName": "\tdescription",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "wf03-n024",
+      "name": "Log Reply Activity",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        3360,
+        336
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process account_disconnected / account_status events\nconst eventBody = $input.first().json.body;\n\nconst unipileAccountId = eventBody.account_id || eventBody.id || '';\nconst statusType = eventBody.event || eventBody.type || eventBody.status || 'unknown';\n\nconst isDisconnect = ['DISCONNECTED', 'CREDENTIALS', 'account_disconnected', 'disconnected'].includes(statusType);\nconst isAuthIssue = ['CREDENTIALS', 'authentication_issue', 'invalid_credentials'].includes(statusType);\n\nreturn [{\n  json: {\n    _unipileAccountId: unipileAccountId,\n    _statusType: statusType,\n    _isDisconnect: isDisconnect,\n    _isAuthIssue: isAuthIssue,\n    _newStatus: isDisconnect ? 'reconnect_required' : (isAuthIssue ? 'unhealthy' : 'unhealthy')\n  }\n}];"
+      },
+      "id": "wf03-n025",
+      "name": "Process Account Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2048,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Accounts Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "={{ $json._newStatus }}",
+            "last_checked": "={{ new Date().toISOString() }}",
+            "row_number": 0,
+            "unipile_id": "={{ $json._unipileAccountId }}"
+          },
+          "matchingColumns": [
+            "unipile_id"
+          ],
+          "schema": [
+            {
+              "id": "account_name",
+              "displayName": "account_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "unipile_id",
+              "displayName": "unipile_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "unipile_api",
+              "displayName": "unipile_api",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "unipile_dsn",
+              "displayName": "unipile_dsn",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "connections_sent_today",
+              "displayName": "connections_sent_today",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "connections_daily_limit",
+              "displayName": "connections_daily_limit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "dms_sent_today",
+              "displayName": "dms_sent_today",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "dms_daily_limit",
+              "displayName": "dms_daily_limit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "last_checked",
+              "displayName": "last_checked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_count",
+              "displayName": "error_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "consecutive_failures",
+              "displayName": "consecutive_failures",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "reset_date",
+              "displayName": "reset_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "auto_paused_at",
+              "displayName": "auto_paused_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "wf03-n026",
+      "name": "Update Account Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2272,
+        720
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": "Cnhkr1IOS1QZTS1g",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "wf03-n027",
+      "name": "Log Account Status Error",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        2496,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1864843744,
+          "mode": "list",
+          "cachedResultName": "Webhook Logs Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1864843744"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "processing_status": "unmatched",
+            "notes": "={{ 'Unrecognized event type: ' + $json.eventType }}",
+            "row_number": 0,
+            "webhook_event_id": "={{ $('Validate Auth Header').first().json.eventId }}"
+          },
+          "matchingColumns": [
+            "webhook_event_id"
+          ],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "webhook_event_id",
+              "displayName": "webhook_event_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "event_type",
+              "displayName": "event_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "raw_payload",
+              "displayName": "raw_payload",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "processing_status",
+              "displayName": "processing_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "matched_row_id",
+              "displayName": "matched_row_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "wf03-n028",
+      "name": "Mark Unrecognized Event",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2048,
+        912
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1864843744,
+          "mode": "list",
+          "cachedResultName": "Webhook Logs Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1864843744"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "processing_status": "processed",
+            "matched_row_id": "={{ $json.row_id || '' }}",
+            "row_number": 0,
+            "webhook_event_id": "={{ $('Validate Auth Header').first().json.eventId }}"
+          },
+          "matchingColumns": [
+            "webhook_event_id"
+          ],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "webhook_event_id",
+              "displayName": "webhook_event_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "event_type",
+              "displayName": "event_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "raw_payload",
+              "displayName": "raw_payload",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "processing_status",
+              "displayName": "processing_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "matched_row_id",
+              "displayName": "matched_row_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "wf03-n029",
+      "name": "Mark Event Processed",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        3520,
+        -32
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "UniPile Webhook Receiver": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8ninstance.sachinn8n.cfd",
+            "user-agent": "axios/1.7.7",
+            "content-length": "1957",
+            "accept": "application/json, text/plain, */*",
+            "accept-encoding": "gzip, br",
+            "cdn-loop": "cloudflare; loops=1",
+            "cf-connecting-ip": "62.210.90.175",
+            "cf-ipcountry": "FR",
+            "cf-ray": "9fa9b1e67cf87006-CDG",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-warp-tag-id": "b815409f-00bd-4841-9595-9379864d3d6d",
+            "connection": "keep-alive",
+            "content-type": "application/json",
+            "x-forwarded-for": "62.210.90.175",
+            "x-forwarded-proto": "https"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "event": "message_received",
+            "account_id": "7SKlOAV6ToyMBaIEVSvCWA",
+            "account_type": "LINKEDIN",
+            "account_info": {
+              "type": "LINKEDIN",
+              "feature": "classic",
+              "user_id": "ACoAABhWnawB-ZKFvKDcybURY1LlMHXNudcKfCk"
+            },
+            "webhook_name": "n8n-messages",
+            "chat_id": "iOfLGcapXpe-X5mIxuFG6w",
+            "attendees": [
+              {
+                "attendee_id": "gNp4Z0MpXNuXDnu3H2iZ4Q",
+                "attendee_provider_id": "ACoAAC3MvCYBiRNjaLRBEZfYv8snIeiBLccdKfw",
+                "attendee_name": "Rutvik Savkare",
+                "attendee_profile_url": "https://www.linkedin.com/in/ACoAAC3MvCYBiRNjaLRBEZfYv8snIeiBLccdKfw",
+                "attendee_specifics": {
+                  "provider": "LINKEDIN",
+                  "member_urn": "urn:li:member:768392230",
+                  "occupation": "MBA Business Analytics | Data Analyst | Ex-LTIMindtree | Dotnet Developer | Python, SQL, Power BI, Excel Expert",
+                  "is_company": false,
+                  "network_distance": "DISTANCE_2"
+                },
+                "attendee_public_identifier": null
+              }
+            ],
+            "sender": {
+              "attendee_id": "AuEoHEv9UEiW_ENFlk22uQ",
+              "attendee_provider_id": "ACoAABhWnawB-ZKFvKDcybURY1LlMHXNudcKfCk",
+              "attendee_name": "Sachin Savkare",
+              "attendee_profile_url": "https://www.linkedin.com/in/ACoAABhWnawB-ZKFvKDcybURY1LlMHXNudcKfCk",
+              "attendee_specifics": {
+                "provider": "LINKEDIN",
+                "member_urn": "urn:li:member:408329644",
+                "occupation": "Business Automation & Data Analytics Engineer | Power BI • SQL • Excel • n8n | Turning Data into Automated Decisions",
+                "is_company": false,
+                "network_distance": "SELF"
+              },
+              "attendee_public_identifier": null
+            },
+            "subject": null,
+            "message": "Hi Rutvik, I came across your profile and would love to connect. Looking forward to staying in touch!",
+            "message_id": "c9KcQTvaVY6zJacTFowNhA",
+            "timestamp": "2026-05-12T13:15:53.635Z",
+            "attachments": [],
+            "is_sender": true,
+            "provider_chat_id": "2-NzNkNDJmNzUtNzViYy00OTRhLWFjY2EtZGRhZWNjODZiNDkwXzEwMA==",
+            "provider_message_id": "2-MTc3ODU5MTc1MzYzNWI1NDQ4OC0xMDAmNzNkNDJmNzUtNzViYy00OTRhLWFjY2EtZGRhZWNjODZiNDkwXzEwMA==",
+            "is_event": 0,
+            "chat_pinned": 0,
+            "quoted": null,
+            "is_forwarded": null,
+            "chat_content_type": null,
+            "message_type": "MESSAGE",
+            "is_group": false,
+            "folder": [
+              "INBOX",
+              "INBOX_LINKEDIN_CLASSIC"
+            ]
+          },
+          "webhookUrl": "https://n8ninstance.sachinn8n.cfd/webhook/unipile/events",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "UniPile Webhook Receiver": {
+      "main": [
+        [
+          {
+            "node": "Validate Auth Header",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Auth Header": {
+      "main": [
+        [
+          {
+            "node": "Is Auth Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Auth Valid": {
+      "main": [
+        [
+          {
+            "node": "Log Raw Webhook Payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Invalid Auth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Raw Webhook Payload": {
+      "main": [
+        [
+          {
+            "node": "Check Event Deduplication",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Event Deduplication": {
+      "main": [
+        [
+          {
+            "node": "Check If Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Duplicate": {
+      "main": [
+        [
+          {
+            "node": "Is Duplicate Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Duplicate Event": {
+      "main": [
+        [
+          {
+            "node": "Skip Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route By Event Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route By Event Type": {
+      "main": [
+        [
+          {
+            "node": "Process Invitation Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Message Received",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Account Status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Account Status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Process Invitation Accepted": {
+      "main": [
+        [
+          {
+            "node": "Find Row by Provider ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Row by Provider ID": {
+      "main": [
+        [
+          {
+            "node": "Update Accepted Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Accepted Row": {
+      "main": [
+        [
+          {
+            "node": "Row Matched for Accept",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Row Matched for Accept": {
+      "main": [
+        [
+          {
+            "node": "Write Accepted to DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Unmatched Accept",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Accepted to DB": {
+      "main": [
+        [
+          {
+            "node": "Log Accepted Activity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Accepted Activity": {
+      "main": [
+        [
+          {
+            "node": "Mark Event Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Message Received": {
+      "main": [
+        [
+          {
+            "node": "Skip Outbound Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip Outbound Message": {
+      "main": [
+        [
+          {
+            "node": "Find Row by Chat ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Find Row by Provider ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Row by Chat ID": {
+      "main": [
+        [
+          {
+            "node": "Update Reply Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Reply Row": {
+      "main": [
+        [
+          {
+            "node": "Row Matched for Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Row Matched for Reply": {
+      "main": [
+        [
+          {
+            "node": "Write Reply to DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Unrecognized Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Reply to DB": {
+      "main": [
+        [
+          {
+            "node": "Log Reply Activity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Reply Activity": {
+      "main": [
+        [
+          {
+            "node": "Mark Event Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Account Status": {
+      "main": [
+        [
+          {
+            "node": "Update Account Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Account Status": {
+      "main": [
+        [
+          {
+            "node": "Log Account Status Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "saveManualExecutions": true,
+    "binaryMode": "separate",
+    "timezone": "Asia/Kolkata",
+    "saveExecutionProgress": true
+  },
+  "versionId": "a2bdb8f6-2f4f-4bc7-8256-0161856094de",
+  "meta": {
+    "instanceId": "91f42292365f2736b62ea45ddfd531a5d9a185f2bc4a363bfb1ae1188ac76851"
+  },
+  "id": "6KjgyXJ9WJGkaQTB",
+  "tags": []
+}

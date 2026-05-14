@@ -1,0 +1,481 @@
+{
+  "name": "09 Daily Counter Reset",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 * * *"
+            }
+          ]
+        }
+      },
+      "id": "f6a7b8c9-0001-0001-0001-000000000001",
+      "name": "Cron Trigger Midnight",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Accounts Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=0"
+        },
+        "options": {
+          "returnAllMatches": "returnAllMatches"
+        }
+      },
+      "id": "f6a7b8c9-0001-0001-0001-000000000002",
+      "name": "Read All Accounts",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        464,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const today = new Date().toISOString().split('T')[0];\nreturn $input.all().map(item => ({\n  json: {\n    account_name: item.json.account_name,\n    connections_sent_today: 0,\n    dms_sent_today: 0,\n    reset_date: today\n  }\n}));"
+      },
+      "id": "f6a7b8c9-0001-0001-0001-000000000003",
+      "name": "Prepare Reset Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Accounts Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "account_name": "={{ $json.account_name }}",
+            "connections_sent_today": "={{ $json.connections_sent_today }}",
+            "dms_sent_today": "={{ $json.dms_sent_today }}",
+            "reset_date": "={{ $json.reset_date }}"
+          },
+          "matchingColumns": [
+            "account_name"
+          ],
+          "schema": [
+            {
+              "id": "account_name",
+              "displayName": "account_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "unipile_id",
+              "displayName": "unipile_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "unipile_api",
+              "displayName": "unipile_api",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "unipile_dsn",
+              "displayName": "unipile_dsn",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "connections_sent_today",
+              "displayName": "connections_sent_today",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "connections_daily_limit",
+              "displayName": "connections_daily_limit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "dms_sent_today",
+              "displayName": "dms_sent_today",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "dms_daily_limit",
+              "displayName": "dms_daily_limit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "last_checked",
+              "displayName": "last_checked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "error_count",
+              "displayName": "error_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "consecutive_failures",
+              "displayName": "consecutive_failures",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "reset_date",
+              "displayName": "reset_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "auto_paused_at",
+              "displayName": "auto_paused_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "f6a7b8c9-0001-0001-0001-000000000004",
+      "name": "Reset Account Counters",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        912,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const today = new Date().toISOString().split('T')[0];\nconst count = $('Read All Accounts').all().length;\nreturn [{ json: { today, count, message: `Daily counters reset for ${count} accounts on ${today}` } }];"
+      },
+      "id": "f6a7b8c9-0001-0001-0001-000000000005",
+      "name": "Build Reset Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1136,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 387593053,
+          "mode": "list",
+          "cachedResultName": "Activity Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=387593053"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ new Date().toISOString() }}",
+            "event_type": "daily_counters_reset",
+            "\tdescription": "={{ $json.message }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "event_type",
+              "displayName": "event_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "campaign_name",
+              "displayName": "campaign_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "prospect_linkedin_url",
+              "displayName": "prospect_linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "\tprospect_first_name",
+              "displayName": "\tprospect_first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "sending_account",
+              "displayName": "sending_account",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "\tdescription",
+              "displayName": "\tdescription",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "f6a7b8c9-0001-0001-0001-000000000006",
+      "name": "Log Reset Activity",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1344,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cron Trigger Midnight": {
+      "main": [
+        [
+          {
+            "node": "Read All Accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read All Accounts": {
+      "main": [
+        [
+          {
+            "node": "Prepare Reset Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Reset Data": {
+      "main": [
+        [
+          {
+            "node": "Reset Account Counters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reset Account Counters": {
+      "main": [
+        [
+          {
+            "node": "Build Reset Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Reset Summary": {
+      "main": [
+        [
+          {
+            "node": "Log Reset Activity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Kolkata",
+    "binaryMode": "separate"
+  },
+  "versionId": "2160b18e-986f-4712-b3ad-bfa7c8080e60",
+  "meta": {
+    "instanceId": "91f42292365f2736b62ea45ddfd531a5d9a185f2bc4a363bfb1ae1188ac76851"
+  },
+  "id": "rN5WMZIszRzC5RLD",
+  "tags": []
+}

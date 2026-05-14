@@ -1,0 +1,1242 @@
+{
+  "name": "01 Campaign Initialization",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "campaign/create",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wf01-n001",
+      "name": "Receive Campaign Create Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        320
+      ],
+      "webhookId": "bda4a8e2-810b-493e-b5aa-caccadb4661b"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate incoming payload from frontend.\n// Frontend sends campaign config + prospect_count + selected accounts.\n// Frontend does NOT send campaign_id, prospect_ids, or prospects[].\n// Expected shape:\n// {\n//   campaign_name: string,\n//   connection_note: string,\n//   message_1: string,\n//   message_2: string (optional),\n//   message_3: string (optional),\n//   message_2_delay_hours: number (default 48),\n//   message_3_delay_hours: number (default 72),\n//   selected_account_names: string[] (non-empty),\n//   prospect_count: number (positive integer)\n// }\nconst body = $input.first().json.body || {};\n\nif (!body.campaign_name) {\n  return [{ json: { valid: false, error: 'Missing campaign_name' } }];\n}\nif (!body.connection_note) {\n  return [{ json: { valid: false, error: 'Missing connection_note' } }];\n}\nif (!body.message_1) {\n  return [{ json: { valid: false, error: 'Missing message_1' } }];\n}\nif (!Array.isArray(body.selected_account_names) || body.selected_account_names.length === 0) {\n  return [{ json: { valid: false, error: 'selected_account_names must be a non-empty array of account names' } }];\n}\nif (!body.prospect_count || typeof body.prospect_count !== 'number' || !Number.isInteger(body.prospect_count) || body.prospect_count < 1) {\n  return [{ json: { valid: false, error: 'prospect_count must be a positive integer (e.g. 50, 100, 500)' } }];\n}\n\nreturn [{ json: {\n  valid: true,\n  campaign_name: body.campaign_name,\n  connection_note: body.connection_note,\n  message_1: body.message_1,\n  message_2: body.message_2 || '',\n  message_3: body.message_3 || '',\n  message_2_delay_hours: typeof body.message_2_delay_hours === 'number' ? body.message_2_delay_hours : 48,\n  message_3_delay_hours: typeof body.message_3_delay_hours === 'number' ? body.message_3_delay_hours : 72,\n  selected_account_names: body.selected_account_names,\n  prospect_count: body.prospect_count\n} }];"
+      },
+      "id": "wf01-n002",
+      "name": "Validate Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-01",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf01-n003",
+      "name": "Is Payload Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        688,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, message: $json.error, data: {} }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "wf01-n004",
+      "name": "Respond Invalid Payload",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        704,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate a unique campaign_id internally.\n// Frontend never sends campaign_id — WF01 owns it.\nconst payload = $input.first().json;\nconst ts = Date.now();\nconst rand = Math.random().toString(36).substring(2, 10);\nconst campaignId = `camp_${ts}_${rand}`;\nreturn [{ json: { ...payload, campaign_id: campaignId } }];"
+      },
+      "id": "wf01-n005a",
+      "name": "Generate Campaign ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1876541027,
+          "mode": "list",
+          "cachedResultName": "Campaigns Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1876541027"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "campaign_id": "={{ $json.campaign_id }}",
+            "campaign_name": "={{ $json.campaign_name }}",
+            "connection_note": "={{ $json.connection_note }}",
+            "prospects": "={{ $json.prospect_count }}",
+            "message_1": "={{ $json.message_1 }}",
+            "message_2": "={{ $json.message_2 }}",
+            "message_3": "={{ $json.message_3 }}",
+            "message_2_delay_hours": "={{ $json.message_2_delay_hours }}",
+            "message_3_delay_hours": "={{ $json.message_3_delay_hours }}",
+            "campaign_status": "running",
+            "connections_sent": "0",
+            "connections_accepted": "0",
+            "messages_sent": "0",
+            "replies_received": "0",
+            "campaign_creation_date": "={{ $now.format('dd-MM-yyyy hh:mm a') }}",
+            "\tselected_account_names": "={{ $json.selected_account_names }}"
+          },
+          "matchingColumns": [
+            "campaign_id"
+          ],
+          "schema": [
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "campaign_name",
+              "displayName": "campaign_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "prospects",
+              "displayName": "prospects",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_status",
+              "displayName": "campaign_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "\tselected_account_names",
+              "displayName": "\tselected_account_names",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "connection_note",
+              "displayName": "connection_note",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message_1",
+              "displayName": "message_1",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message_2",
+              "displayName": "message_2",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message_3",
+              "displayName": "message_3",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message_2_delay_hours",
+              "displayName": "message_2_delay_hours",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message_3_delay_hours",
+              "displayName": "message_3_delay_hours",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "connections_sent",
+              "displayName": "connections_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "connections_accepted",
+              "displayName": "connections_accepted",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "messages_sent",
+              "displayName": "messages_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "replies_received",
+              "displayName": "replies_received",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_creation_date",
+              "displayName": "campaign_creation_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "wf01-n005b",
+      "name": "Write Campaign Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1184,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Accounts Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "active"
+            }
+          ]
+        },
+        "combineFilters": "AND",
+        "options": {
+          "returnAllMatches": "returnAllMatches"
+        }
+      },
+      "id": "wf01-n006",
+      "name": "Read Active Accounts",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1408,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1247578906,
+          "mode": "list",
+          "cachedResultName": "Prospects Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1247578906"
+        },
+        "options": {}
+      },
+      "id": "wf01-n006b",
+      "name": "Read Prospects Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1632,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1412862851,
+          "mode": "list",
+          "cachedResultName": "Database Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1412862851"
+        },
+        "options": {
+          "returnAllMatches": "returnAllMatches"
+        }
+      },
+      "id": "wf01-n007",
+      "name": "Read Existing Database Rows",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1856,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const validatedPayload = $('Validate Payload').first().json;\nconst campaignId = $('Generate Campaign ID').first().json.campaign_id;\nconst accountRows = $('Read Active Accounts').all();\nconst prospectsFromSheet = $('Read Prospects Sheet').all();\nconst existingDbRows = $('Read Existing Database Rows').all();\n\nconst selectedNames = validatedPayload.selected_account_names;\nconst accounts = accountRows\n  .map(r => r.json)\n  .filter(a => a.status === 'active' && selectedNames.includes(a.account_name))\n  .sort((a, b) => parseInt(a.connections_sent_today || '0') - parseInt(b.connections_sent_today || '0'));\n\nif (accounts.length === 0) {\n  return [{ json: { valid: false, error: `None of the selected accounts (${selectedNames.join(', ')}) are currently active` } }];\n}\n\nconst existingKeys = new Set(\n  existingDbRows\n    .filter(r => r.json.prospect_id && r.json.campaign_id)\n    .map(r => `${r.json.prospect_id}__${r.json.campaign_id}`)\n);\n\nfunction normalizeLinkedInUrl(raw) {\n  if (!raw || typeof raw !== 'string') return null;\n  let u = raw.trim().toLowerCase();\n  u = u.replace(/[?#].*$/, '');\n  u = u.replace(/\\/+$/, '');\n  if (!u.startsWith('https://')) {\n    u = u.replace(/^http:\\/\\//, '');\n    if (!u.startsWith('www.')) u = 'www.' + u;\n    u = 'https://' + u;\n  }\n  if (u.includes('linkedin.com') && !u.includes('www.linkedin.com')) {\n    u = u.replace('linkedin.com', 'www.linkedin.com');\n  }\n  return u;\n}\n\nfunction isValidLinkedInUrl(url) {\n  if (!url) return false;\n  return /^https:\\/\\/www\\.linkedin\\.com\\/in\\/[a-zA-Z0-9\\-_]+$/.test(url);\n}\n\nconst requestedCount = validatedPayload.prospect_count;\nconst now = new Date().toISOString();\nconst rows = [];\nconst skipped_dup = [];\nconst skipped_invalid = [];\n\nfor (const prospectRow of prospectsFromSheet) {\n  if (rows.length >= requestedCount) break;\n\n  const p = prospectRow.json;\n\n  const prospectId = p.prospect_id || String(p.row_number);\n  if (!prospectId) {\n    skipped_invalid.push('unknown:no_id');\n    continue;\n  }\n\n  const key = `${prospectId}__${campaignId}`;\n  if (existingKeys.has(key)) {\n    skipped_dup.push(prospectId);\n    continue;\n  }\n\n  const linkedinUrl = normalizeLinkedInUrl(p.linkedIn_url || p.linkedin_url);\n  if (!isValidLinkedInUrl(linkedinUrl)) {\n    skipped_invalid.push(prospectId + ':invalid_url');\n    continue;\n  }\n\n  const account = accounts[rows.length % accounts.length];\n  const rowId = `${campaignId}_${prospectId}_${Date.now()}`;\n\n  rows.push({\n    json: {\n      row_id: rowId,\n      prospect_id: prospectId,\n      campaign_id: campaignId,\n      campaign_name: validatedPayload.campaign_name || '',\n      linkedin_url: linkedinUrl,\n      first_name: p.first_name || '',\n      last_name: p.last_name || '',\n      company_name: p.company_name || '',\n      title: p.title || '',\n      city: p.city || '',\n      country: p.country || '',\n      company_website: p.company_website || '',\n      sending_account: account.account_name,\n      provider_id: '',\n      chat_id: '',\n      connection_request_status: '',\n      connection_request_time: '',\n      connection_accepted: 'false',\n      connection_accepted_time: '',\n      message_1_eligible: 'false',\n      message_1_sent: 'false',\n      message_1_time: '',\n      message_2_sent: 'false',\n      message_2_time: '',\n      message_3_sent: 'false',\n      message_3_time: '',\n      reply_received: 'false',\n      reply_text: '',\n      reply_time: '',\n      withdrawal_eligible_at: '',\n      retry_count: '0',\n      failure_reason: '',\n      last_updated: now,\n      lifecycle_state: 'ready_for_invite'\n    }\n  });\n}\n\nif (rows.length === 0) {\n  return [{ json: { valid: false, error: `No eligible prospects found. Duplicates skipped: ${skipped_dup.length}, Invalid/missing URLs: ${skipped_invalid.length}` } }];\n}\n\nconst result = [...rows];\nresult[0].json._meta = {\n  rows_created: rows.length,\n  prospect_count_requested: requestedCount,\n  skipped_dup: skipped_dup.length,\n  skipped_invalid: skipped_invalid.length,\n  campaign_id: campaignId,\n  accounts_used: [...new Set(rows.map(r => r.json.sending_account))]\n};\n\nreturn result;"
+      },
+      "id": "wf01-n008",
+      "name": "Build Execution Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2080,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-02",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": false,
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "wf01-n009",
+      "name": "Are Rows Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, message: $json.error, data: {} }) }}",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "id": "wf01-n010",
+      "name": "Respond Build Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1312,
+        864
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Strip _meta from all items before writing to sheet.\n// Preserve _rowMeta string for use in the response node after the append.\nconst items = $input.all();\nconst meta = items[0].json._meta || {};\n\nreturn items.map(item => {\n  const row = { ...item.json };\n  delete row._meta;\n  return { json: { ...row, _rowMeta: JSON.stringify(meta) } };\n});"
+      },
+      "id": "wf01-n011",
+      "name": "Remove Meta Field",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1412862851,
+          "mode": "list",
+          "cachedResultName": "Database Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1412862851"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "campaign_id": "={{ $json.campaign_id }}",
+            "campaign_name": "={{ $json.campaign_name }}",
+            "linkedin_url": "={{ $json.linkedin_url }}",
+            "first_name": "={{ $json.first_name }}",
+            "last_name": "={{ $json.last_name }}",
+            "company_name": "={{ $json.company_name }}",
+            "title": "={{ $json.title }}",
+            "city": "={{ $json.city }}",
+            "country": "={{ $json.country }}",
+            "company_website": "={{ $json.company_website }}",
+            "sending_account": "={{ $json.sending_account }}",
+            "provider_id": "={{ $json.provider_id }}",
+            "prospect_id": "={{ $json.prospect_id }}",
+            "row_id": "={{ $json.row_id }}",
+            "chat_id": "={{ $json.chat_id }}",
+            "lifecycle_state": "={{ $json.lifecycle_state }}",
+            "connection_request_status": "={{ $json.connection_request_status }}",
+            "connection_request_time": "={{ $json.connection_request_time }}",
+            "connection_accepted": "={{ $json.connection_accepted }}",
+            "connection_accepted_time": "={{ $json.connection_accepted_time }}",
+            "message_1_sent": "={{ $json.message_1_sent }}",
+            "message_1_time": "={{ $json.message_1_time }}",
+            "message_2_sent": "={{ $json.message_2_sent }}",
+            "message_2_time": "={{ $json.message_2_time }}",
+            "message_3_sent": "={{ $json.message_3_sent }}",
+            "message_3_time": "={{ $json.message_3_time }}",
+            "reply_received": "={{ $json.reply_received }}",
+            "reply_text": "={{ $json.reply_text }}",
+            "reply_time": "={{ $json.reply_time }}",
+            "withdrawal_eligible_at": "={{ $json.withdrawal_eligible_at }}",
+            "retry_count": "={{ $json.retry_count }}",
+            "failure_reason": "={{ $json.failure_reason }}",
+            "message_1_eligible": "={{ $json.message_1_eligible }}",
+            "last_updated": "={{ $json.last_updated }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "row_id",
+              "displayName": "row_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "prospect_id",
+              "displayName": "prospect_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_name",
+              "displayName": "campaign_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "linkedin_url",
+              "displayName": "linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "first_name",
+              "displayName": "first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_name",
+              "displayName": "last_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "company_name",
+              "displayName": "company_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "city",
+              "displayName": "city",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "country",
+              "displayName": "country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "company_website",
+              "displayName": "company_website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sending_account",
+              "displayName": "sending_account",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "provider_id",
+              "displayName": "provider_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "lifecycle_state",
+              "displayName": "lifecycle_state",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "connection_request_status",
+              "displayName": "connection_request_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "connection_request_time",
+              "displayName": "connection_request_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "connection_accepted",
+              "displayName": "connection_accepted",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "connection_accepted_time",
+              "displayName": "connection_accepted_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message_1_eligible",
+              "displayName": "message_1_eligible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "message_1_sent",
+              "displayName": "message_1_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "message_1_time",
+              "displayName": "message_1_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "message_2_sent",
+              "displayName": "message_2_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "message_2_time",
+              "displayName": "message_2_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "message_3_sent",
+              "displayName": "message_3_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "message_3_time",
+              "displayName": "message_3_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "reply_received",
+              "displayName": "reply_received",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reply_text",
+              "displayName": "reply_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reply_time",
+              "displayName": "reply_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "withdrawal_eligible_at",
+              "displayName": "withdrawal_eligible_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "retry_count",
+              "displayName": "retry_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "failure_reason",
+              "displayName": "failure_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "last_updated",
+              "displayName": "last_updated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "wf01-n012",
+      "name": "Append Rows to Database",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1504,
+        608
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 387593053,
+          "mode": "list",
+          "cachedResultName": "Activity Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=387593053"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ new Date().toISOString() }}",
+            "event_type": "campaign_initialized",
+            "campaign_id": "={{ $('Generate Campaign ID').first().json.campaign_id }}",
+            "campaign_name": "={{ $('Validate Payload').first().json.campaign_name }}",
+            "\tdescription": "={{ 'Campaign initialized. ' + $input.all().length + ' prospect rows created.' }}"
+          },
+          "matchingColumns": [
+            "timestamp"
+          ],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "event_type",
+              "displayName": "event_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_name",
+              "displayName": "campaign_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "prospect_linkedin_url",
+              "displayName": "prospect_linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "\tprospect_first_name",
+              "displayName": "\tprospect_first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sending_account",
+              "displayName": "sending_account",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "\tdescription",
+              "displayName": "\tdescription",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "wf01-n013",
+      "name": "Write Activity Log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1712,
+        608
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Campaign initialized successfully', data: JSON.parse($json._rowMeta || '{}') }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "wf01-n014",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1904,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "Cnhkr1IOS1QZTS1g",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "wf01-n015",
+      "name": "Log Initialization Error",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1072,
+        864
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Receive Campaign Create Request": {
+      "main": [
+        [
+          {
+            "node": "Validate Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Payload": {
+      "main": [
+        [
+          {
+            "node": "Is Payload Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Payload Valid": {
+      "main": [
+        [
+          {
+            "node": "Generate Campaign ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Invalid Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Campaign ID": {
+      "main": [
+        [
+          {
+            "node": "Write Campaign Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Campaign Row": {
+      "main": [
+        [
+          {
+            "node": "Read Active Accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Active Accounts": {
+      "main": [
+        [
+          {
+            "node": "Read Prospects Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Prospects Sheet": {
+      "main": [
+        [
+          {
+            "node": "Read Existing Database Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Existing Database Rows": {
+      "main": [
+        [
+          {
+            "node": "Build Execution Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Execution Rows": {
+      "main": [
+        [
+          {
+            "node": "Are Rows Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Are Rows Valid": {
+      "main": [
+        [
+          {
+            "node": "Log Initialization Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Remove Meta Field",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Meta Field": {
+      "main": [
+        [
+          {
+            "node": "Append Rows to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Rows to Database": {
+      "main": [
+        [
+          {
+            "node": "Write Activity Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Activity Log": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond Build Error": {
+      "main": [
+        []
+      ]
+    },
+    "Log Initialization Error": {
+      "main": [
+        [
+          {
+            "node": "Respond Build Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Kolkata",
+    "binaryMode": "separate"
+  },
+  "versionId": "09f14965-4bb0-42b3-afa6-7c7c51bec48a",
+  "meta": {
+    "instanceId": "91f42292365f2736b62ea45ddfd531a5d9a185f2bc4a363bfb1ae1188ac76851"
+  },
+  "id": "09roFBxIFK9B4eWC",
+  "tags": []
+}

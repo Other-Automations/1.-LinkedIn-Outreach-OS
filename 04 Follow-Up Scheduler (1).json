@@ -1,0 +1,3385 @@
+{
+  "name": "04 Follow-Up Scheduler",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000001",
+      "name": "Cron Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -48,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 832829213,
+          "mode": "list",
+          "cachedResultName": "Settings Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=832829213"
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000002",
+      "name": "Read Settings",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        176,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all();\nconst settings = {};\nfor (const row of rows) {\n  if (row.json.key) settings[row.json.key] = row.json.value;\n}\nconst locked = settings['followup_scheduler_locked'] === 'true';\nconst lockTime = settings['followup_scheduler_lock_time'] || '';\nconst staleMinutes = parseInt(settings['scheduler_stale_lock_minutes'] || '10', 10);\nlet isStale = false;\nif (locked && lockTime) {\n  const lockAge = (Date.now() - new Date(lockTime).getTime()) / 60000;\n  isStale = lockAge > staleMinutes;\n}\nreturn [{ json: { settings, locked, isStale, lockTime } }];"
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000003",
+      "name": "Build Settings Map",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "lock-check",
+              "leftValue": "={{ $json.locked === false || $json.isStale === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000004",
+      "name": "Check Lock",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        608,
+        400
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b2c3d4e5-0001-0001-0001-000000000005",
+      "name": "Abort Already Running",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        832,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 832829213,
+          "mode": "list",
+          "cachedResultName": "Settings Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=832829213"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "key": "followup_scheduler_locked",
+            "value": "true"
+          },
+          "matchingColumns": [
+            "key"
+          ],
+          "schema": [
+            {
+              "id": "key",
+              "displayName": "key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "value",
+              "displayName": "value",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "description",
+              "displayName": "description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000006",
+      "name": "Acquire Lock",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        832,
+        272
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 832829213,
+          "mode": "list",
+          "cachedResultName": "Settings Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=832829213"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "key": "followup_scheduler_lock_time",
+            "value": "={{ new Date().toISOString() }}"
+          },
+          "matchingColumns": [
+            "key"
+          ],
+          "schema": [
+            {
+              "id": "key",
+              "displayName": "key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "value",
+              "displayName": "value",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "description",
+              "displayName": "description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000007",
+      "name": "Set Lock Time",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1024,
+        384
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1412862851,
+          "mode": "list",
+          "cachedResultName": "Database Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1412862851"
+        },
+        "options": {
+          "returnAllMatches": "returnAllMatches"
+        }
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000008",
+      "name": "Read Database Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1264,
+        208
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Accounts Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=0"
+        },
+        "options": {
+          "returnAllMatches": "returnAllMatches"
+        }
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000009",
+      "name": "Read Accounts Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1264,
+        384
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1876541027,
+          "mode": "list",
+          "cachedResultName": "Campaigns Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1876541027"
+        },
+        "options": {
+          "returnAllMatches": "returnAllMatches"
+        }
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000010",
+      "name": "Read Campaigns Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1264,
+        560
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const dbRows = $('Read Database Sheet').all().map(i => i.json);\nconst accountRows = $('Read Accounts Sheet').all().map(i => i.json);\nconst campaignRows = $('Read Campaigns Sheet').all().map(i => i.json);\nconst settingsRaw = $('Build Settings Map').first().json.settings;\nconst now = new Date();\n\nconst accountMap = {};\nfor (const a of accountRows) {\n  if (a.account_name) accountMap[a.account_name] = a;\n}\nconst campaignMap = {};\nfor (const c of campaignRows) {\n  if (c.campaign_id) campaignMap[c.campaign_id] = c;\n}\n\nconst globalDmsLimit = parseInt(settingsRaw['dms_daily_limit'] || '20', 10);\nconst dmQuota = {};\nfor (const a of accountRows) {\n  if (!a.account_name) continue;\n  const limit = parseInt(a.dms_daily_limit || globalDmsLimit, 10);\n  const sent = parseInt(a.dms_sent_today || '0', 10);\n  dmQuota[a.account_name] = Math.max(0, limit - sent);\n}\n\nfunction claimDM(accountName) {\n  if (dmQuota[accountName] === undefined || dmQuota[accountName] <= 0) return false;\n  dmQuota[accountName]--;\n  return true;\n}\n\nfunction isEligible(row) {\n  const account = accountMap[row.sending_account];\n  if (!account || account.status !== 'active') return false;\n  const campaign = campaignMap[row.campaign_id];\n  if (!campaign || campaign.campaign_status !== 'running') return false;\n  return true;\n}\n\nfunction bool(v) {\n  return v === true || v === 'true' || v === 'TRUE';\n}\n\nfunction personalizeText(template, prospect) {\n  if (!template) return '';\n  const firstName = (prospect.first_name || '').trim();\n  const lastName = (prospect.last_name || '').trim();\n  return template\n    .replace(/\\{\\{first_name\\}\\}/gi, firstName)\n    .replace(/\\{\\{last_name\\}\\}/gi, lastName)\n    .replace(/\\{\\{full_name\\}\\}/gi, [firstName, lastName].filter(Boolean).join(' '))\n    .replace(/\\{\\{company_name\\}\\}/gi, (prospect.company_name || '').trim())\n    .replace(/\\{\\{title\\}\\}/gi, (prospect.title || '').trim());\n}\n\n// Part A: message_1 dispatch\nconst partA = [];\nfor (const row of dbRows) {\n  if (!bool(row.message_1_eligible)) continue;\n  if (bool(row.message_1_sent)) continue;\n  if (row.lifecycle_state !== 'invite_accepted') continue;\n  if (!isEligible(row)) continue;\n  if (!claimDM(row.sending_account)) continue;\n  const campaignA = campaignMap[row.campaign_id];\n  partA.push({ ...row, _account: accountMap[row.sending_account], _campaign: campaignA, _personalized_message_1: personalizeText(campaignA.message_1 || '', row) });\n}\n\n// Part B: follow-up 1\nconst partB = [];\nfor (const row of dbRows) {\n  if (row.lifecycle_state !== 'waiting_for_followup') continue;\n  if (bool(row.message_2_sent) || bool(row.reply_received)) continue;\n  if (!isEligible(row)) continue;\n  const campaign = campaignMap[row.campaign_id];\n  const elapsed = (now - new Date(row.message_1_time)) / 3600000;\n  if (elapsed < parseFloat(campaign.message_2_delay_hours || 24)) continue;\n  if (!claimDM(row.sending_account)) continue;\n  partB.push({ ...row, _account: accountMap[row.sending_account], _campaign: campaign, _personalized_message_2: personalizeText(campaign.message_2 || '', row) });\n}\n\n// Part C: follow-up 2\nconst partC = [];\nfor (const row of dbRows) {\n  if (row.lifecycle_state !== 'followup_1_sent') continue;\n  if (bool(row.message_3_sent) || bool(row.reply_received)) continue;\n  if (!isEligible(row)) continue;\n  const campaign = campaignMap[row.campaign_id];\n  const elapsed = (now - new Date(row.message_2_time)) / 3600000;\n  if (elapsed < parseFloat(campaign.message_3_delay_hours || 48)) continue;\n  if (!claimDM(row.sending_account)) continue;\n  partC.push({ ...row, _account: accountMap[row.sending_account], _campaign: campaign, _personalized_message_3: personalizeText(campaign.message_3 || '', row) });\n}\n\n// Part D: post-followup2 completion\nconst postWait = parseFloat(settingsRaw['post_followup2_wait_hours'] || '72');\nconst partD = dbRows.filter(r => {\n  if (r.lifecycle_state !== 'followup_2_sent') return false;\n  if (bool(r.reply_received)) return false;\n  return (now - new Date(r.message_3_time)) / 3600000 >= postWait;\n});\n\n// Part E: campaign auto-completion\nconst activeStates = ['ready_for_invite','invite_sent','invite_accepted','waiting_for_followup','followup_1_sent','followup_2_sent'];\nconst completableCampaigns = campaignRows.filter(c => {\n  if (c.campaign_status !== 'running') return false;\n  return !dbRows.some(r => r.campaign_id === c.campaign_id && activeStates.includes(r.lifecycle_state));\n});\n\nreturn [{ json: { partA, partB, partC, partD, completableCampaigns, accountMap, campaignMap, settings: settingsRaw, now: now.toISOString() } }];"
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000012",
+      "name": "Build Work Queues",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Spreads partA rows for per-item HTTP processing.\n// Outputs skip sentinel if partA is empty so the sequential chain continues.\nconst data = $input.first().json;\nif (!data.partA || data.partA.length === 0) {\n  return [{ json: { _skip: true } }];\n}\nreturn data.partA.map(r => ({ json: r }));"
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000013",
+      "name": "Process Part A — Message 1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        1024
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "skip-check-a",
+              "leftValue": "={{ $json._skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000037",
+      "name": "Check Part A Empty",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        656,
+        1024
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b2c3d4e5-0001-0001-0001-000000000038",
+      "name": "Part A Skip",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1712,
+        752
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json._account.unipile_dsn }}/api/v1/chats",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ account_id: $json._account.unipile_id, attendees_ids: [$json.provider_id], text: $json._personalized_message_1 }) }}\n",
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000014",
+      "name": "Send Message 1 — Create Chat",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        1040
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Nu9hpzRBe8A9MtM6",
+          "name": "Unipile Sachin 08"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "msg1-success",
+              "leftValue": "={{ $json.chat_id !== undefined && $json.chat_id !== '' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000015",
+      "name": "Check Message 1 Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1412862851,
+          "mode": "list",
+          "cachedResultName": "Database Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1412862851"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_id": "={{ $('Process Part A — Message 1').item.json.row_id }}",
+            "message_1_sent": "TRUE",
+            "message_1_time": "={{ new Date().toISOString() }}",
+            "message_1_eligible": "FALSE",
+            "chat_id": "={{ $json.chat_id }}",
+            "lifecycle_state": "waiting_for_followup",
+            "row_number": 0
+          },
+          "matchingColumns": [
+            "row_id"
+          ],
+          "schema": [
+            {
+              "id": "row_id",
+              "displayName": "row_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "prospect_id",
+              "displayName": "prospect_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "campaign_name",
+              "displayName": "campaign_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "linkedin_url",
+              "displayName": "linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "first_name",
+              "displayName": "first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "last_name",
+              "displayName": "last_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "company_name",
+              "displayName": "company_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "city",
+              "displayName": "city",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "country",
+              "displayName": "country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "company_website",
+              "displayName": "company_website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "sending_account",
+              "displayName": "sending_account",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "provider_id",
+              "displayName": "provider_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "lifecycle_state",
+              "displayName": "lifecycle_state",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "connection_request_status",
+              "displayName": "connection_request_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "connection_request_time",
+              "displayName": "connection_request_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "connection_accepted",
+              "displayName": "connection_accepted",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "connection_accepted_time",
+              "displayName": "connection_accepted_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_1_eligible",
+              "displayName": "message_1_eligible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "message_1_sent",
+              "displayName": "message_1_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "message_1_time",
+              "displayName": "message_1_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "message_2_sent",
+              "displayName": "message_2_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_2_time",
+              "displayName": "message_2_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_3_sent",
+              "displayName": "message_3_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_3_time",
+              "displayName": "message_3_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "reply_received",
+              "displayName": "reply_received",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "reply_text",
+              "displayName": "reply_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "reply_time",
+              "displayName": "reply_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "withdrawal_eligible_at",
+              "displayName": "withdrawal_eligible_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "retry_count",
+              "displayName": "retry_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "failure_reason",
+              "displayName": "failure_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "last_updated",
+              "displayName": "last_updated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000016",
+      "name": "Update Row — Message 1 Sent",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1312,
+        1024
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 387593053,
+          "mode": "list",
+          "cachedResultName": "Activity Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=387593053"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ new Date().toISOString() }}",
+            "event_type": "message_1_sent",
+            "campaign_id": "={{ $('Process Part A — Message 1').item.json.campaign_id }}",
+            "campaign_name": "={{ $('Process Part A — Message 1').item.json.campaign_name }}",
+            "prospect_linkedin_url": "={{ $('Process Part A — Message 1').item.json.linkedin_url }}",
+            "sending_account": "={{ $('Process Part A — Message 1').item.json.sending_account }}",
+            "\tprospect_first_name": "={{ $('Process Part A — Message 1').item.json.first_name }}",
+            "\tdescription": "=Message 1 sent to {{ $('Process Part A — Message 1').item.json.first_name }} {{ $('Process Part A — Message 1').item.json.last_name }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "event_type",
+              "displayName": "event_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_name",
+              "displayName": "campaign_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "prospect_linkedin_url",
+              "displayName": "prospect_linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "\tprospect_first_name",
+              "displayName": "\tprospect_first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sending_account",
+              "displayName": "sending_account",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "\tdescription",
+              "displayName": "\tdescription",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000017",
+      "name": "Log Message 1 Activity",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1520,
+        1024
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": "Cnhkr1IOS1QZTS1g",
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000018",
+      "name": "Message 1 Failed — Log Error",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1408,
+        1264
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// All Part A processing complete (skip OR success/failure items).\n// Collapse to 1 item so Part B is triggered exactly once.\nreturn [{ json: $('Build Work Queues').first().json }];"
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000040",
+      "name": "Part A Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1712,
+        1024
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Triggered by Part A Gate (sequential execution).\n// Reads queue from Build Work Queues directly.\nconst data = $('Build Work Queues').first().json;\nif (!data.partB || data.partB.length === 0) {\n  return [{ json: { _skip: true } }];\n}\nreturn data.partB.map(r => ({ json: r }));"
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000019",
+      "name": "Process Part B — Follow-Up 1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2096,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "skip-check-b",
+              "leftValue": "={{ $json._skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000041",
+      "name": "Check Part B Empty",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2304,
+        240
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b2c3d4e5-0001-0001-0001-000000000042",
+      "name": "Part B Skip",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        3376,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json._account.unipile_dsn }}/api/v1/chats/{{ $json.chat_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"account_id\": \"{{ $json._account.unipile_id }}\",\n  \"text\": \"{{ $json._campaign.message_2 }}\"\n}",
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000020",
+      "name": "Send Follow-Up 1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2528,
+        256
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Nu9hpzRBe8A9MtM6",
+          "name": "Unipile Sachin 08"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "fu1-success",
+              "leftValue": "={{ $json.object === 'MessageSentObject' || $json.id !== undefined }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000021",
+      "name": "Check Follow-Up 1 Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2736,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1412862851,
+          "mode": "list",
+          "cachedResultName": "Database Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1412862851"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_id": "={{ $('Process Part B — Follow-Up 1').item.json.row_id }}",
+            "message_2_sent": "TRUE",
+            "message_2_time": "={{ new Date().toISOString() }}",
+            "lifecycle_state": "followup_1_sent"
+          },
+          "matchingColumns": [
+            "row_id"
+          ],
+          "schema": [
+            {
+              "id": "row_id",
+              "displayName": "row_id",
+              "required": true,
+              "defaultMatch": true,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "message_2_sent",
+              "displayName": "message_2_sent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": false,
+              "display": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "message_2_time",
+              "displayName": "message_2_time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": false,
+              "display": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "lifecycle_state",
+              "displayName": "lifecycle_state",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": false,
+              "display": true,
+              "type": "string",
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000022",
+      "name": "Update Row — Follow-Up 1 Sent",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        2960,
+        240
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 387593053,
+          "mode": "list",
+          "cachedResultName": "Activity Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=387593053"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ new Date().toISOString() }}",
+            "event_type": "followup_1_sent",
+            "campaign_id": "={{ $('Process Part B — Follow-Up 1').item.json.campaign_id }}",
+            "campaign_name": "={{ $('Process Part B — Follow-Up 1').item.json.campaign_name }}",
+            "prospect_linkedin_url": "={{ $('Process Part B — Follow-Up 1').item.json.linkedin_url }}",
+            "sending_account": "={{ $('Process Part B — Follow-Up 1').item.json.sending_account }}",
+            "\tprospect_first_name": "={{ $('Process Part B — Follow-Up 1').item.json.first_name }}",
+            "\tdescription": "=Follow-up 1 sent to {{ $('Process Part B — Follow-Up 1').item.json.first_name }} {{ $('Process Part B — Follow-Up 1').item.json.last_name }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "event_type",
+              "displayName": "event_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_name",
+              "displayName": "campaign_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "prospect_linkedin_url",
+              "displayName": "prospect_linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "\tprospect_first_name",
+              "displayName": "\tprospect_first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sending_account",
+              "displayName": "sending_account",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "\tdescription",
+              "displayName": "\tdescription",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000023",
+      "name": "Log Follow-Up 1 Activity",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        3168,
+        240
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": "Cnhkr1IOS1QZTS1g",
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000024",
+      "name": "Follow-Up 1 Failed — Log Error",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        3072,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// All Part B processing complete. Collapse to 1 item to trigger Part C.\nreturn [{ json: $('Build Work Queues').first().json }];"
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000044",
+      "name": "Part B Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3392,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Triggered by Part B Gate (sequential execution).\nconst data = $('Build Work Queues').first().json;\nif (!data.partC || data.partC.length === 0) {\n  return [{ json: { _skip: true } }];\n}\nreturn data.partC.map(r => ({ json: r }));"
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000025",
+      "name": "Process Part C — Follow-Up 2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2112,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "skip-check-c",
+              "leftValue": "={{ $json._skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000045",
+      "name": "Check Part C Empty",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2336,
+        1040
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b2c3d4e5-0001-0001-0001-000000000046",
+      "name": "Part C Skip",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        3520,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json._account.unipile_dsn }}/api/v1/chats/{{ $json.chat_id }}/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"account_id\": \"{{ $json._account.unipile_id }}\",\n  \"text\": \"{{ $json._campaign.message_3 }}\"\n}",
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000026",
+      "name": "Send Follow-Up 2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2560,
+        1056
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Nu9hpzRBe8A9MtM6",
+          "name": "Unipile Sachin 08"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "fu2-success",
+              "leftValue": "={{ $json.object === 'MessageSentObject' || $json.id !== undefined }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000027",
+      "name": "Check Follow-Up 2 Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2784,
+        1056
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1412862851,
+          "mode": "list",
+          "cachedResultName": "Database Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1412862851"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_id": "={{ $('Process Part C — Follow-Up 2').item.json.row_id }}",
+            "message_3_sent": "TRUE",
+            "message_3_time": "={{ new Date().toISOString() }}",
+            "lifecycle_state": "followup_2_sent"
+          },
+          "matchingColumns": [
+            "row_id"
+          ],
+          "schema": [
+            {
+              "id": "row_id",
+              "displayName": "row_id",
+              "required": true,
+              "defaultMatch": true,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "message_3_sent",
+              "displayName": "message_3_sent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": false,
+              "display": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "message_3_time",
+              "displayName": "message_3_time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": false,
+              "display": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "lifecycle_state",
+              "displayName": "lifecycle_state",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": false,
+              "display": true,
+              "type": "string",
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000028",
+      "name": "Update Row — Follow-Up 2 Sent",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        3056,
+        1040
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 387593053,
+          "mode": "list",
+          "cachedResultName": "Activity Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=387593053"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ new Date().toISOString() }}",
+            "event_type": "followup_2_sent",
+            "campaign_id": "={{ $('Process Part C — Follow-Up 2').item.json.campaign_id }}",
+            "campaign_name": "={{ $('Process Part C — Follow-Up 2').item.json.campaign_name }}",
+            "prospect_linkedin_url": "={{ $('Process Part C — Follow-Up 2').item.json.linkedin_url }}",
+            "sending_account": "={{ $('Process Part C — Follow-Up 2').item.json.sending_account }}",
+            "\tprospect_first_name": "={{ $('Process Part C — Follow-Up 2').item.json.first_name }}",
+            "\tdescription": "=Follow-up 2 sent to {{ $('Process Part C — Follow-Up 2').item.json.first_name }} {{ $('Process Part C — Follow-Up 2').item.json.last_name }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "event_type",
+              "displayName": "event_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_name",
+              "displayName": "campaign_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "prospect_linkedin_url",
+              "displayName": "prospect_linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "\tprospect_first_name",
+              "displayName": "\tprospect_first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sending_account",
+              "displayName": "sending_account",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "\tdescription",
+              "displayName": "\tdescription",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000029",
+      "name": "Log Follow-Up 2 Activity",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        3264,
+        1040
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": "Cnhkr1IOS1QZTS1g",
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000030",
+      "name": "Follow-Up 2 Failed — Log Error",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        3152,
+        1280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// All Part C processing complete. Collapse to 1 item to trigger Part D.\nreturn [{ json: $('Build Work Queues').first().json }];"
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000048",
+      "name": "Part C Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3536,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Triggered by Part C Gate (sequential execution).\nconst data = $('Build Work Queues').first().json;\nif (!data.partD || data.partD.length === 0) {\n  return [{ json: { _skip: true } }];\n}\nreturn data.partD.map(r => ({ json: r }));"
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000031",
+      "name": "Process Part D — Mark Completed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3760,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "skip-check-d",
+              "leftValue": "={{ $json._skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000049",
+      "name": "Check Part D Empty",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3984,
+        240
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b2c3d4e5-0001-0001-0001-000000000050",
+      "name": "Part D Skip",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        4416,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1412862851,
+          "mode": "list",
+          "cachedResultName": "Database Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1412862851"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_id": "={{ $json.row_id }}",
+            "lifecycle_state": "completed",
+            "row_number": 0
+          },
+          "matchingColumns": [
+            "row_id"
+          ],
+          "schema": [
+            {
+              "id": "row_id",
+              "displayName": "row_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "prospect_id",
+              "displayName": "prospect_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "campaign_name",
+              "displayName": "campaign_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "linkedin_url",
+              "displayName": "linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "first_name",
+              "displayName": "first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "last_name",
+              "displayName": "last_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "company_name",
+              "displayName": "company_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "city",
+              "displayName": "city",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "country",
+              "displayName": "country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "company_website",
+              "displayName": "company_website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "sending_account",
+              "displayName": "sending_account",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "provider_id",
+              "displayName": "provider_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "lifecycle_state",
+              "displayName": "lifecycle_state",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "connection_request_status",
+              "displayName": "connection_request_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "connection_request_time",
+              "displayName": "connection_request_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "connection_accepted",
+              "displayName": "connection_accepted",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "connection_accepted_time",
+              "displayName": "connection_accepted_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_1_eligible",
+              "displayName": "message_1_eligible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_1_sent",
+              "displayName": "message_1_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_1_time",
+              "displayName": "message_1_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_2_sent",
+              "displayName": "message_2_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_2_time",
+              "displayName": "message_2_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_3_sent",
+              "displayName": "message_3_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message_3_time",
+              "displayName": "message_3_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "reply_received",
+              "displayName": "reply_received",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "reply_text",
+              "displayName": "reply_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "reply_time",
+              "displayName": "reply_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "withdrawal_eligible_at",
+              "displayName": "withdrawal_eligible_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "retry_count",
+              "displayName": "retry_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "failure_reason",
+              "displayName": "failure_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "last_updated",
+              "displayName": "last_updated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000032",
+      "name": "Update Row — Completed",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        4208,
+        256
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// All Part D processing complete. Collapse to 1 item to trigger Part E.\nreturn [{ json: $('Build Work Queues').first().json }];"
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000051",
+      "name": "Part D Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4432,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Triggered by Part D Gate (sequential execution).\nconst data = $('Build Work Queues').first().json;\nif (!data.completableCampaigns || data.completableCampaigns.length === 0) {\n  return [{ json: { _skip: true } }];\n}\nreturn data.completableCampaigns.map(c => ({ json: c }));"
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000033",
+      "name": "Process Part E — Campaign Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3920,
+        1056
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "skip-check-e",
+              "leftValue": "={{ $json._skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000052",
+      "name": "Check Part E Empty",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        4144,
+        1056
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b2c3d4e5-0001-0001-0001-000000000053",
+      "name": "Part E Skip",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        4784,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1876541027,
+          "mode": "list",
+          "cachedResultName": "Campaigns Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1876541027"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "campaign_id": "={{ $json.campaign_id }}",
+            "campaign_status": "completed"
+          },
+          "matchingColumns": [
+            "campaign_id"
+          ],
+          "schema": [
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": true,
+              "defaultMatch": true,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "campaign_status",
+              "displayName": "campaign_status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": false,
+              "display": true,
+              "type": "string",
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000034",
+      "name": "Mark Campaign Completed",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        4368,
+        1072
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 387593053,
+          "mode": "list",
+          "cachedResultName": "Activity Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=387593053"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ new Date().toISOString() }}",
+            "event_type": "campaign_completed",
+            "campaign_id": "={{ $json.campaign_id }}",
+            "campaign_name": "={{ $json.campaign_name }}",
+            "\tdescription": "=Campaign auto-completed: {{ $json.campaign_name }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "event_type",
+              "displayName": "event_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_name",
+              "displayName": "campaign_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "prospect_linkedin_url",
+              "displayName": "prospect_linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "\tprospect_first_name",
+              "displayName": "\tprospect_first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "sending_account",
+              "displayName": "sending_account",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "\tdescription",
+              "displayName": "\tdescription",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000035",
+      "name": "Log Campaign Completed Activity",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        4576,
+        1072
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// All Part E processing complete. Output 1 item to trigger single Release Lock.\nreturn [{ json: { done: true } }];"
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000054",
+      "name": "Part E Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4816,
+        1072
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 832829213,
+          "mode": "list",
+          "cachedResultName": "Settings Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=832829213"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "key": "followup_scheduler_locked",
+            "value": "false"
+          },
+          "matchingColumns": [
+            "key"
+          ],
+          "schema": [
+            {
+              "id": "key",
+              "displayName": "key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "value",
+              "displayName": "value",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "description",
+              "displayName": "description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "b2c3d4e5-0001-0001-0001-000000000036",
+      "name": "Release Lock",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        5056,
+        1072
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# PART A: Message 1\n### Someone accepted your connection request. Now it's time to send them the first message. Part A finds all those people and sends the opening message to each of them.",
+        "height": 752,
+        "width": 1600,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        336,
+        720
+      ],
+      "id": "cb96a51a-f039-47e7-a10a-e58c7462fad0",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "# PART B: Folllow Up Message 1\n### You already sent the first message but got no reply. Enough time has passed. Part B sends the first follow-up 1 as reminder message to those people.",
+        "height": 768,
+        "width": 1600,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1984,
+        -80
+      ],
+      "id": "244ca9f7-2385-464d-b668-99255ec6c13a",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "# PART C: Follow Up Message 2\n### Still no reply after follow-up 1 message. More time has passed. Part C sends the second and final follow-up message.",
+        "height": 768,
+        "width": 1760,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1984,
+        720
+      ],
+      "id": "4af3962f-d5f3-4a5a-89a0-757f59633add",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "# PART D: Mark Completed\n### You sent all 3 messages (Message 1, Follow Up Message 1, Follow Up Message 2). \n### It has been 3 days since the last one. The person never replied. Part D closes their journey by marking them as \"completed\" && we won't send them anything more.",
+        "height": 768,
+        "width": 976,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3648,
+        -80
+      ],
+      "id": "54f3c435-9840-4b0f-86fe-903ff610b75b",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "# PART E: Mark Campaign Completion\n### Checks if an entire campaign is finished — meaning every single person in that campaign has been completed, replied, withdrawn, or failed. If yes, Part E marks the whole campaign as \"completed\" automatically.",
+        "height": 768,
+        "width": 1168,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3792,
+        720
+      ],
+      "id": "9dad27a6-b1d2-4505-b74a-939a9b7c41dd",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1536,
+        368
+      ],
+      "id": "01bcf949-6d3d-48c1-9672-9d4d9fbe91ef",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const dbRows = $('Read Database Sheet').all().map(i => i.json);\nconst accountRows = $('Read Accounts Sheet').all().map(i => i.json);\nconst campaignRows = $('Read Campaigns Sheet').all().map(i => i.json);\nconst settingsRaw = $('Build Settings Map').first().json.settings;\nconst now = new Date();\n\nconst accountMap = {};\nfor (const a of accountRows) {\n  if (a.account_name) accountMap[a.account_name] = a;\n}\nconst campaignMap = {};\nfor (const c of campaignRows) {\n  if (c.campaign_id) campaignMap[c.campaign_id] = c;\n}\n\n// In-memory DM quota — shared across all parts within this single scheduler run.\n// Computed once from Accounts sheet; each claimDM() call decrements atomically.\n// Prevents over-sending when Parts A, B, C would otherwise each read the same\n// stale dms_sent_today value independently.\nconst globalDmsLimit = parseInt(settingsRaw['dms_daily_limit'] || '20', 10);\nconst dmQuota = {};\nfor (const a of accountRows) {\n  if (!a.account_name) continue;\n  const limit = parseInt(a.dms_daily_limit || globalDmsLimit, 10);\n  const sent = parseInt(a.dms_sent_today || '0', 10);\n  dmQuota[a.account_name] = Math.max(0, limit - sent);\n}\n\nfunction claimDM(accountName) {\n  if (dmQuota[accountName] === undefined || dmQuota[accountName] <= 0) return false;\n  dmQuota[accountName]--;\n  return true;\n}\n\nfunction isEligible(row) {\n  const account = accountMap[row.sending_account];\n  if (!account || account.status !== 'active') return false;\n  const campaign = campaignMap[row.campaign_id];\n  if (!campaign || campaign.campaign_status !== 'running') return false;\n  return true;\n}\n\nfunction bool(v) {\n  return v === true || v === 'true' || v === 'TRUE';\n}\n\n// Part A: message_1 dispatch\nconst partA = [];\nfor (const row of dbRows) {\n  if (!bool(row.message_1_eligible)) continue;\n  if (bool(row.message_1_sent)) continue;\n  if (row.lifecycle_state !== 'invite_accepted') continue;\n  if (!isEligible(row)) continue;\n  if (!claimDM(row.sending_account)) continue;\n  partA.push({ ...row, _account: accountMap[row.sending_account], _campaign: campaignMap[row.campaign_id] });\n}\n\n// Part B: follow-up 1\nconst partB = [];\nfor (const row of dbRows) {\n  if (row.lifecycle_state !== 'waiting_for_followup') continue;\n  if (bool(row.message_2_sent) || bool(row.reply_received)) continue;\n  if (!isEligible(row)) continue;\n  const campaign = campaignMap[row.campaign_id];\n  const elapsed = (now - new Date(row.message_1_time)) / 3600000;\n  if (elapsed < parseFloat(campaign.message_2_delay_hours || 24)) continue;\n  if (!claimDM(row.sending_account)) continue;\n  partB.push({ ...row, _account: accountMap[row.sending_account], _campaign: campaign });\n}\n\n// Part C: follow-up 2\nconst partC = [];\nfor (const row of dbRows) {\n  if (row.lifecycle_state !== 'followup_1_sent') continue;\n  if (bool(row.message_3_sent) || bool(row.reply_received)) continue;\n  if (!isEligible(row)) continue;\n  const campaign = campaignMap[row.campaign_id];\n  const elapsed = (now - new Date(row.message_2_time)) / 3600000;\n  if (elapsed < parseFloat(campaign.message_3_delay_hours || 48)) continue;\n  if (!claimDM(row.sending_account)) continue;\n  partC.push({ ...row, _account: accountMap[row.sending_account], _campaign: campaign });\n}\n\n// Part D: post-followup2 completion\nconst postWait = parseFloat(settingsRaw['post_followup2_wait_hours'] || '72');\nconst partD = dbRows.filter(r => {\n  if (r.lifecycle_state !== 'followup_2_sent') return false;\n  if (bool(r.reply_received)) return false;\n  return (now - new Date(r.message_3_time)) / 3600000 >= postWait;\n});\n\n// Part E: campaign auto-completion\nconst activeStates = ['ready_for_invite','invite_sent','invite_accepted','waiting_for_followup','followup_1_sent','followup_2_sent'];\nconst completableCampaigns = campaignRows.filter(c => {\n  if (c.campaign_status !== 'running') return false;\n  return !dbRows.some(r => r.campaign_id === c.campaign_id && activeStates.includes(r.lifecycle_state));\n});\n\nreturn [{ json: { partA, partB, partC, partD, completableCampaigns, accountMap, campaignMap, settings: settingsRaw, now: now.toISOString() } }];"
+      },
+      "id": "838a4701-5979-455f-b248-1f9c68cbc394",
+      "name": "Build Work Queues1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1664,
+        -592
+      ],
+      "disabled": true
+    }
+  ],
+  "pinData": {
+    "Cron Trigger": [
+      {
+        "json": {
+          "timestamp": "2026-05-13T17:45:26.003+05:30",
+          "Readable date": "May 13th 2026, 5:45:26 pm",
+          "Readable time": "5:45:26 pm",
+          "Day of week": "Wednesday",
+          "Year": "2026",
+          "Month": "May",
+          "Day of month": "13",
+          "Hour": "17",
+          "Minute": "45",
+          "Second": "26",
+          "Timezone": "Asia/Kolkata (UTC+05:30)"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Cron Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Settings": {
+      "main": [
+        [
+          {
+            "node": "Build Settings Map",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Settings Map": {
+      "main": [
+        [
+          {
+            "node": "Check Lock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Lock": {
+      "main": [
+        [
+          {
+            "node": "Acquire Lock",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Abort Already Running",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Acquire Lock": {
+      "main": [
+        [
+          {
+            "node": "Set Lock Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Lock Time": {
+      "main": [
+        [
+          {
+            "node": "Read Database Sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Accounts Sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Campaigns Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Database Sheet": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Accounts Sheet": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Read Campaigns Sheet": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Build Work Queues": {
+      "main": [
+        [
+          {
+            "node": "Process Part A — Message 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Part A — Message 1": {
+      "main": [
+        [
+          {
+            "node": "Check Part A Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Part A Empty": {
+      "main": [
+        [
+          {
+            "node": "Part A Skip",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Message 1 — Create Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Part A Skip": {
+      "main": [
+        [
+          {
+            "node": "Part A Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Message 1 — Create Chat": {
+      "main": [
+        [
+          {
+            "node": "Check Message 1 Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Message 1 Success": {
+      "main": [
+        [
+          {
+            "node": "Update Row — Message 1 Sent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Message 1 Failed — Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Row — Message 1 Sent": {
+      "main": [
+        [
+          {
+            "node": "Log Message 1 Activity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Message 1 Activity": {
+      "main": [
+        [
+          {
+            "node": "Part A Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message 1 Failed — Log Error": {
+      "main": [
+        [
+          {
+            "node": "Part A Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Part A Gate": {
+      "main": [
+        [
+          {
+            "node": "Process Part B — Follow-Up 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Part B — Follow-Up 1": {
+      "main": [
+        [
+          {
+            "node": "Check Part B Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Part B Empty": {
+      "main": [
+        [
+          {
+            "node": "Part B Skip",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Follow-Up 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Part B Skip": {
+      "main": [
+        [
+          {
+            "node": "Part B Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Follow-Up 1": {
+      "main": [
+        [
+          {
+            "node": "Check Follow-Up 1 Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Follow-Up 1 Success": {
+      "main": [
+        [
+          {
+            "node": "Update Row — Follow-Up 1 Sent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Follow-Up 1 Failed — Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Row — Follow-Up 1 Sent": {
+      "main": [
+        [
+          {
+            "node": "Log Follow-Up 1 Activity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Follow-Up 1 Activity": {
+      "main": [
+        [
+          {
+            "node": "Part B Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Follow-Up 1 Failed — Log Error": {
+      "main": [
+        [
+          {
+            "node": "Part B Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Part B Gate": {
+      "main": [
+        [
+          {
+            "node": "Process Part C — Follow-Up 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Part C — Follow-Up 2": {
+      "main": [
+        [
+          {
+            "node": "Check Part C Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Part C Empty": {
+      "main": [
+        [
+          {
+            "node": "Part C Skip",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Follow-Up 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Part C Skip": {
+      "main": [
+        [
+          {
+            "node": "Part C Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Follow-Up 2": {
+      "main": [
+        [
+          {
+            "node": "Check Follow-Up 2 Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Follow-Up 2 Success": {
+      "main": [
+        [
+          {
+            "node": "Update Row — Follow-Up 2 Sent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Follow-Up 2 Failed — Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Row — Follow-Up 2 Sent": {
+      "main": [
+        [
+          {
+            "node": "Log Follow-Up 2 Activity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Follow-Up 2 Activity": {
+      "main": [
+        [
+          {
+            "node": "Part C Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Follow-Up 2 Failed — Log Error": {
+      "main": [
+        [
+          {
+            "node": "Part C Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Part C Gate": {
+      "main": [
+        [
+          {
+            "node": "Process Part D — Mark Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Part D — Mark Completed": {
+      "main": [
+        [
+          {
+            "node": "Check Part D Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Part D Empty": {
+      "main": [
+        [
+          {
+            "node": "Part D Skip",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Row — Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Part D Skip": {
+      "main": [
+        [
+          {
+            "node": "Part D Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Row — Completed": {
+      "main": [
+        [
+          {
+            "node": "Part D Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Part D Gate": {
+      "main": [
+        [
+          {
+            "node": "Process Part E — Campaign Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Part E — Campaign Completion": {
+      "main": [
+        [
+          {
+            "node": "Check Part E Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Part E Empty": {
+      "main": [
+        [
+          {
+            "node": "Part E Skip",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Campaign Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Part E Skip": {
+      "main": [
+        [
+          {
+            "node": "Part E Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Campaign Completed": {
+      "main": [
+        [
+          {
+            "node": "Log Campaign Completed Activity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Campaign Completed Activity": {
+      "main": [
+        [
+          {
+            "node": "Part E Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Part E Gate": {
+      "main": [
+        [
+          {
+            "node": "Release Lock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Build Work Queues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Kolkata",
+    "binaryMode": "separate",
+    "saveManualExecutions": false
+  },
+  "versionId": "f9f3442e-3ed9-4a7a-83a3-3778ae94e84f",
+  "meta": {
+    "instanceId": "91f42292365f2736b62ea45ddfd531a5d9a185f2bc4a363bfb1ae1188ac76851"
+  },
+  "id": "z3XuXBf5XVKKBhZV",
+  "tags": []
+}

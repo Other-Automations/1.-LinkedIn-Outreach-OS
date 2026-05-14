@@ -1,0 +1,722 @@
+{
+  "name": "07 Analytics Aggregation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 60
+            }
+          ]
+        }
+      },
+      "id": "e5f6a7b8-0001-0001-0001-000000000001",
+      "name": "Cron Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1412862851,
+          "mode": "list",
+          "cachedResultName": "Database Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1412862851"
+        },
+        "options": {
+          "returnAllMatches": "returnAllMatches"
+        }
+      },
+      "id": "e5f6a7b8-0001-0001-0001-000000000002",
+      "name": "Read Database Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        464,
+        176
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1876541027,
+          "mode": "list",
+          "cachedResultName": "Campaigns Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1876541027"
+        },
+        "options": {
+          "returnAllMatches": "returnAllMatches"
+        }
+      },
+      "id": "e5f6a7b8-0001-0001-0001-000000000003",
+      "name": "Read Campaigns Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        464,
+        368
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Accounts Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=0"
+        },
+        "options": {
+          "returnAllMatches": "returnAllMatches"
+        }
+      },
+      "id": "e5f6a7b8-0001-0001-0001-000000000004",
+      "name": "Read Accounts Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        464,
+        560
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const dbRows = $('Read Database Sheet').all().map(i => i.json);\nconst campaigns = $('Read Campaigns Sheet').all().map(i => i.json);\nconst accounts = $('Read Accounts Sheet').all().map(i => i.json);\n\nconst now = new Date();\nconst todayStr = now.toISOString().split('T')[0];\n\n// Helper: is date today?\nconst isToday = (ts) => ts && ts.startsWith(todayStr);\n\n// Helper: safe division\nconst pct = (num, den) => den > 0 ? Math.round((num / den) * 10000) / 100 : 0;\n\n// --- Global metrics ---\nconst totalRows = dbRows.length;\nconst invitesSentTotal = dbRows.filter(r => r.connection_request_time).length;\nconst invitesSentToday = dbRows.filter(r => isToday(r.connection_request_time)).length;\nconst invitesAccepted = dbRows.filter(r => r.connection_accepted === 'TRUE' || r.connection_accepted === true).length;\nconst repliesReceived = dbRows.filter(r => r.reply_received === 'TRUE' || r.reply_received === true).length;\nconst msg1Sent = dbRows.filter(r => r.message_1_sent === 'TRUE' || r.message_1_sent === true).length;\nconst msg2Sent = dbRows.filter(r => r.message_2_sent === 'TRUE' || r.message_2_sent === true).length;\nconst msg3Sent = dbRows.filter(r => r.message_3_sent === 'TRUE' || r.message_3_sent === true).length;\nconst withdrawn = dbRows.filter(r => r.lifecycle_state === 'withdrawn').length;\nconst completed = dbRows.filter(r => r.lifecycle_state === 'completed').length;\nconst failed = dbRows.filter(r => r.lifecycle_state === 'failed').length;\nconst pendingInvites = dbRows.filter(r => r.lifecycle_state === 'ready_for_invite').length;\nconst awaitingAcceptance = dbRows.filter(r => r.lifecycle_state === 'invite_sent').length;\n\nconst acceptanceRate = pct(invitesAccepted, invitesSentTotal);\nconst replyRate = pct(repliesReceived, invitesAccepted);\nconst followup1Rate = pct(msg2Sent, msg1Sent);\nconst followup2Rate = pct(msg3Sent, msg2Sent);\n\n// --- Per-campaign metrics ---\nconst campaignMetrics = campaigns.map(c => {\n  const cRows = dbRows.filter(r => r.campaign_id === c.campaign_id);\n  const cSent = cRows.filter(r => r.connection_request_time).length;\n  const cAccepted = cRows.filter(r => r.connection_accepted === 'TRUE' || r.connection_accepted === true).length;\n  const cReplied = cRows.filter(r => r.reply_received === 'TRUE' || r.reply_received === true).length;\n  const cMsg1 = cRows.filter(r => r.message_1_sent === 'TRUE' || r.message_1_sent === true).length;\n  return {\n    campaign_id: c.campaign_id,\n    campaign_name: c.campaign_name,\n    campaign_status: c.campaign_status,\n    total_prospects: cRows.length,\n    invites_sent: cSent,\n    invites_accepted: cAccepted,\n    replies_received: cReplied,\n    messages_sent: cMsg1,\n    acceptance_rate: pct(cAccepted, cSent),\n    reply_rate: pct(cReplied, cAccepted)\n  };\n});\n\n// --- Per-account metrics ---\nconst accountMetrics = accounts.map(a => {\n  const aRows = dbRows.filter(r => r.sending_account === a.account_name);\n  const aSent = aRows.filter(r => r.connection_request_time).length;\n  const aSentToday = aRows.filter(r => isToday(r.connection_request_time)).length;\n  return {\n    account_name: a.account_name,\n    status: a.status,\n    total_invites_sent: aSent,\n    invites_sent_today: aSentToday,\n    connections_sent_today: parseInt(a.connections_sent_today || '0', 10),\n    dms_sent_today: parseInt(a.dms_sent_today || '0', 10),\n    consecutive_failures: parseInt(a.consecutive_failures || '0', 10)\n  };\n});\n\n// --- Lifecycle state distribution ---\nconst lifecycleStates = ['ready_for_invite','invite_sent','invite_accepted','waiting_for_followup','followup_1_sent','followup_2_sent','replied','completed','withdrawn','failed'];\nconst stateDistribution = {};\nfor (const s of lifecycleStates) {\n  stateDistribution[s] = dbRows.filter(r => r.lifecycle_state === s).length;\n}\n\n// --- Daily trend: last 30 days ---\nconst dailyTrend = [];\nfor (let d = 29; d >= 0; d--) {\n  const day = new Date(now);\n  day.setDate(day.getDate() - d);\n  const dayStr = day.toISOString().split('T')[0];\n  const dayInvites = dbRows.filter(r => r.connection_request_time && r.connection_request_time.startsWith(dayStr)).length;\n  const dayAccepted = dbRows.filter(r => r.connection_accepted_time && r.connection_accepted_time.startsWith(dayStr)).length;\n  const dayReplies = dbRows.filter(r => r.reply_time && r.reply_time.startsWith(dayStr)).length;\n  dailyTrend.push({ date: dayStr, invites: dayInvites, accepted: dayAccepted, replies: dayReplies });\n}\n\n// --- Active counts ---\nconst activeAccounts = accounts.filter(a => a.status === 'active').length;\nconst unhealthyAccounts = accounts.filter(a => ['unhealthy','reconnect_required'].includes(a.status)).length;\nconst activeCampaigns = campaigns.filter(c => c.campaign_status === 'running').length;\n\n// Build summary row for Analytics Sheet\nconst summary = {\n  last_updated: now.toISOString(),\n  total_prospects_in_db: totalRows,\n  invites_sent_total: invitesSentTotal,\n  invites_sent_today: invitesSentToday,\n  invites_accepted_total: invitesAccepted,\n  replies_received_total: repliesReceived,\n  message_1_sent_total: msg1Sent,\n  message_2_sent_total: msg2Sent,\n  message_3_sent_total: msg3Sent,\n  withdrawn_total: withdrawn,\n  completed_total: completed,\n  failed_total: failed,\n  pending_invites: pendingInvites,\n  awaiting_acceptance: awaitingAcceptance,\n  acceptance_rate_pct: acceptanceRate,\n  reply_rate_pct: replyRate,\n  followup1_send_rate_pct: followup1Rate,\n  followup2_send_rate_pct: followup2Rate,\n  active_campaigns: activeCampaigns,\n  active_accounts: activeAccounts,\n  unhealthy_accounts: unhealthyAccounts,\n  lifecycle_distribution: JSON.stringify(stateDistribution),\n  per_campaign_metrics: JSON.stringify(campaignMetrics),\n  per_account_metrics: JSON.stringify(accountMetrics),\n  daily_trend_30d: JSON.stringify(dailyTrend)\n};\n\nreturn [{ json: summary }];"
+      },
+      "id": "e5f6a7b8-0001-0001-0001-000000000005",
+      "name": "Aggregate All Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "clear",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1237160287,
+          "mode": "list",
+          "cachedResultName": "Analytics Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1237160287"
+        }
+      },
+      "id": "e5f6a7b8-0001-0001-0001-000000000006",
+      "name": "Clear Analytics Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1088,
+        368
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1237160287,
+          "mode": "list",
+          "cachedResultName": "Analytics Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=1237160287"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "last_updated",
+              "displayName": "last_updated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "total_prospects_in_db",
+              "displayName": "total_prospects_in_db",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "invites_sent_total",
+              "displayName": "invites_sent_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "invites_sent_today",
+              "displayName": "invites_sent_today",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "invites_accepted_total",
+              "displayName": "invites_accepted_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "replies_received_total",
+              "displayName": "replies_received_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "message_1_sent_total",
+              "displayName": "message_1_sent_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "message_2_sent_total",
+              "displayName": "message_2_sent_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "message_3_sent_total",
+              "displayName": "message_3_sent_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "withdrawn_total",
+              "displayName": "withdrawn_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "completed_total",
+              "displayName": "completed_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "failed_total",
+              "displayName": "failed_total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "pending_invites",
+              "displayName": "pending_invites",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "awaiting_acceptance",
+              "displayName": "awaiting_acceptance",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "acceptance_rate_pct",
+              "displayName": "acceptance_rate_pct",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "reply_rate_pct",
+              "displayName": "reply_rate_pct",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "followup1_send_rate_pct",
+              "displayName": "followup1_send_rate_pct",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "followup2_send_rate_pct",
+              "displayName": "followup2_send_rate_pct",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "active_campaigns",
+              "displayName": "active_campaigns",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "active_accounts",
+              "displayName": "active_accounts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "unhealthy_accounts",
+              "displayName": "unhealthy_accounts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "lifecycle_distribution",
+              "displayName": "lifecycle_distribution",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "per_campaign_metrics",
+              "displayName": "per_campaign_metrics",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "per_account_metrics",
+              "displayName": "per_account_metrics",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "daily_trend_30d",
+              "displayName": "daily_trend_30d",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "e5f6a7b8-0001-0001-0001-000000000007",
+      "name": "Write Analytics Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1296,
+        368
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Outreach",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 387593053,
+          "mode": "list",
+          "cachedResultName": "Activity Logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1q9tgfZpvLN1Ir6ouEN5jamQIAdwwuSf_TZx6Fr3EMpE/edit#gid=387593053"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ new Date().toISOString() }}",
+            "event_type": "analytics_aggregated",
+            "\tdescription": "={{ 'Analytics recalculated. Invites total: ' + $('Aggregate All Metrics').first().json.invites_sent_total + ', Accepted: ' + $('Aggregate All Metrics').first().json.invites_accepted_total + ', Replied: ' + $('Aggregate All Metrics').first().json.replies_received_total }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "event_type",
+              "displayName": "event_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "campaign_id",
+              "displayName": "campaign_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "campaign_name",
+              "displayName": "campaign_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "prospect_linkedin_url",
+              "displayName": "prospect_linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "\tprospect_first_name",
+              "displayName": "\tprospect_first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "sending_account",
+              "displayName": "sending_account",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "\tdescription",
+              "displayName": "\tdescription",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "e5f6a7b8-0001-0001-0001-000000000008",
+      "name": "Log Aggregation Activity",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1520,
+        368
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r5dJyl6N7Nvh7Os3",
+          "name": "Google Sheets AIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        704,
+        352
+      ],
+      "id": "cf322083-46be-4b05-9019-07977e0b2db2",
+      "name": "Merge"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cron Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read Database Sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Campaigns Sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Accounts Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Database Sheet": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Campaigns Sheet": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Read Accounts Sheet": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Aggregate All Metrics": {
+      "main": [
+        [
+          {
+            "node": "Clear Analytics Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear Analytics Sheet": {
+      "main": [
+        [
+          {
+            "node": "Write Analytics Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Analytics Row": {
+      "main": [
+        [
+          {
+            "node": "Log Aggregation Activity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Aggregate All Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Kolkata",
+    "binaryMode": "separate"
+  },
+  "versionId": "73fe6543-3e3f-4e17-ac3f-afc211cbd17d",
+  "meta": {
+    "instanceId": "91f42292365f2736b62ea45ddfd531a5d9a185f2bc4a363bfb1ae1188ac76851"
+  },
+  "id": "AEopp6aGJteOyL3N",
+  "tags": []
+}
